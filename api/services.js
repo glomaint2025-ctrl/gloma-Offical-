@@ -1,5 +1,4 @@
 import { db, snapshotToArray, sortBy } from './_lib/db.js';
-import { requireAuth } from './_lib/auth.js';
 
 const REF = 'services';
 
@@ -9,8 +8,6 @@ export default async function handler(req, res) {
     const services = sortBy(snapshotToArray(snap), 'sort_order', 'asc');
     return res.status(200).json({ services });
   }
-
-  if (!requireAuth(req, res)) return;
 
   if (req.method === 'POST') {
     const { title, text, items, icon_key, sort_order } = req.body || {};

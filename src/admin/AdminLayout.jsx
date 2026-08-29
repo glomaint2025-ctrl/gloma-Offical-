@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet } from 'react-router-dom';
 
 const NAV = [
   { to: '/admin/leads', label: 'Leads' },
@@ -8,13 +8,6 @@ const NAV = [
 ];
 
 export default function AdminLayout() {
-  const navigate = useNavigate();
-
-  const handleLogout = async () => {
-    await fetch('/api/admin/logout', { method: 'POST' }).catch(() => {});
-    navigate('/admin/login', { replace: true });
-  };
-
   return (
     <div className="admin-shell">
       <aside className="admin-sidebar">
@@ -26,7 +19,6 @@ export default function AdminLayout() {
             </NavLink>
           ))}
         </nav>
-        <button type="button" className="admin-logout" onClick={handleLogout}>Log Out</button>
       </aside>
       <main className="admin-content">
         <Outlet />

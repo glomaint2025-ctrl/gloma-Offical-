@@ -10,8 +10,6 @@ import Services from './pages/Services.jsx';
 import Works from './pages/Works.jsx';
 import Reviews from './pages/Reviews.jsx';
 import Contact from './pages/Contact.jsx';
-import AdminLogin from './admin/AdminLogin.jsx';
-import AdminGate from './admin/AdminGate.jsx';
 import AdminLayout from './admin/AdminLayout.jsx';
 import Leads from './admin/pages/Leads.jsx';
 import WorksAdmin from './admin/pages/WorksAdmin.jsx';
@@ -104,15 +102,7 @@ function PublicLayout() {
 export default function App() {
   return (
     <Routes>
-      <Route path="/admin/login" element={<AdminLogin />} />
-      <Route
-        path="/admin"
-        element={(
-          <AdminGate>
-            <AdminLayout />
-          </AdminGate>
-        )}
-      >
+      <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<Leads />} />
         <Route path="leads" element={<Leads />} />
         <Route path="works" element={<WorksAdmin />} />

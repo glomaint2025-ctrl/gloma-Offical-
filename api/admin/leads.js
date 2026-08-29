@@ -1,12 +1,9 @@
 import { db, snapshotToArray, sortBy } from '../_lib/db.js';
-import { requireAuth } from '../_lib/auth.js';
 
 const VALID_STATUSES = ['new', 'contacted', 'archived'];
 const REF = 'leads';
 
 export default async function handler(req, res) {
-  if (!requireAuth(req, res)) return;
-
   if (req.method === 'GET') {
     const snap = await db.ref(REF).once('value');
     const leads = sortBy(snapshotToArray(snap), 'created_at', 'desc');
