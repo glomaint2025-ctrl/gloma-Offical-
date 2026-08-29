@@ -1,0 +1,178 @@
+.admin-auth-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #101317;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: #e8eaed;
+}
+
+.admin-auth-card {
+  background: #1a1e24;
+  border: 1px solid #2a2f37;
+  border-radius: 10px;
+  padding: 32px;
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-auth-card h1 {
+  font-size: 20px;
+  margin: 0 0 8px;
+}
+
+.admin-auth-card label {
+  font-size: 13px;
+  color: #9aa2ad;
+}
+
+.admin-auth-card input,
+.admin-form input,
+.admin-form textarea,
+.admin-form select {
+  background: #12151a;
+  border: 1px solid #2a2f37;
+  border-radius: 6px;
+  color: #e8eaed;
+  padding: 8px 10px;
+  font-size: 14px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.admin-auth-card button,
+.admin-shell button {
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 9px 14px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.admin-auth-card button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.admin-error {
+  color: #f87171;
+  font-size: 13px;
+  margin: 0;
+}
+
+.admin-shell {
+  min-height: 100vh;
+  display: flex;
+  background: #f5f6f8;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: #1a1e24;
+}
+
+.admin-sidebar {
+  width: 200px;
+  background: #101317;
+  color: #e8eaed;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 14px;
+  gap: 6px;
+}
+
+.admin-sidebar-title {
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.admin-sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.admin-sidebar nav a {
+  color: #9aa2ad;
+  text-decoration: none;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.admin-sidebar nav a.active,
+.admin-sidebar nav a:hover {
+  background: #1f242c;
+  color: #fff;
+}
+
+.admin-logout {
+  background: transparent;
+  border: 1px solid #2a2f37;
+  color: #e8eaed;
+}
+
+.admin-content {
+  flex: 1;
+  padding: 32px 40px;
+  overflow-x: auto;
+}
+
+.admin-content h1 {
+  margin-top: 0;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+  background: #fff;
+  border: 1px solid #e2e5ea;
+}
+
+.admin-table th,
+.admin-table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid #e2e5ea;
+  font-size: 14px;
+  vertical-align: top;
+}
+
+.admin-message-cell {
+  max-width: 320px;
+  white-space: pre-wrap;
+}
+
+.admin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 480px;
+  background: #fff;
+  border: 1px solid #e2e5ea;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 16px;
+}
+
+.admin-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.admin-form-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.admin-form-actions button[type='button'] {
+  background: #e2e5ea;
+  color: #1a1e24;
+}
