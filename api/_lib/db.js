@@ -17,7 +17,7 @@ try {
 } catch (err) {
   console.error("Firebase initialization failed:", err);
   const throwError = () => {
-    throw new Error(`Firebase not initialized. Error: ${err.message}. Configs: projectId=${!!process.env.FIREBASE_PROJECT_ID}, clientEmail=${!!process.env.FIREBASE_CLIENT_EMAIL}, hasPrivateKey=${!!process.env.FIREBASE_PRIVATE_KEY}, privateKeyLength=${process.env.FIREBASE_PRIVATE_KEY?.length}, databaseURL=${process.env.FIREBASE_DATABASE_URL}`);
+    throw new Error("Firebase database connection failed. Please ensure the required environment variables (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY, FIREBASE_DATABASE_URL) are configured correctly in your Vercel project settings.");
   };
   db = new Proxy({}, {
     get: (target, prop) => {
