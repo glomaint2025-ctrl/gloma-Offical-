@@ -69,21 +69,21 @@ async function seed() {
       sort_order: i,
     };
   });
-  await db.ref('works').update(worksUpdates);
+  await db.ref('works').set(worksUpdates);
 
   const reviewsUpdates = {};
   REVIEWS.forEach((r, i) => {
     const key = db.ref('reviews').push().key;
     reviewsUpdates[key] = { quote: r.q, name: r.name, role: r.role, sort_order: i };
   });
-  await db.ref('reviews').update(reviewsUpdates);
+  await db.ref('reviews').set(reviewsUpdates);
 
   const servicesUpdates = {};
   SERVICES.forEach((s, i) => {
     const key = db.ref('services').push().key;
     servicesUpdates[key] = { title: s.title, text: s.text, items: s.items, icon_key: s.icon_key, sort_order: i };
   });
-  await db.ref('services').update(servicesUpdates);
+  await db.ref('services').set(servicesUpdates);
 
   console.log(`Seeded ${WORKS.length} works, ${REVIEWS.length} reviews, ${SERVICES.length} services.`);
 }
