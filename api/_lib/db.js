@@ -1,18 +1,35 @@
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getDatabase } from 'firebase-admin/database';
 
-if (!getApps().length) {
-  initializeApp({
-    credential: cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
-    }),
-    databaseURL: process.env.FIREBASE_DATABASE_URL,
+let db;
+try {
+  if (!getApps().length) {
+    initializeApp({
+      credential: cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
+      }),
+      databaseURL: process.env.FIREBASE_DATABASE_URL,
+    });
+  }
+  db = getDatabase();
+} catch (err) {
+  console.error("Firebase initialization failed:", err);
+  const throwError = () => {
+    throw new Error(`Firebase not initialized. Error: ${err.message}. Configs: projectId=${!!process.env.FIREBASE_PROJECT_ID}, clientEmail=${!!process.env.FIREBASE_CLIENT_EMAIL}, hasPrivateKey=${!!process.env.FIREBASE_PRIVATE_KEY}, privateKeyLength=${process.env.FIREBASE_PRIVATE_KEY?.length}, databaseURL=${process.env.FIREBASE_DATABASE_URL}`);
+  };
+  db = new Proxy({}, {
+    get: (target, prop) => {
+      if (prop === 'then' || prop === 'catch') return undefined;
+      return () => {
+        throwError();
+      };
+    }
   });
 }
 
-export const db = getDatabase();
+export { db };
 
 // Realtime Database returns a { pushId: {...fields} } object per collection;
 // these turn that into the [{ id, ...fields }] array shape every API route uses.
