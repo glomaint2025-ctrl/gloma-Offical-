@@ -60,6 +60,21 @@ const devApiPlugin = () => ({
         return;
       }
 
+      if (req.url === '/api/admin/login') {
+        res.end(JSON.stringify({ ok: true, token: 'local-dev-token', user: { username: 'Glomaint' } }));
+        return;
+      }
+
+      if (req.url === '/api/admin/verify') {
+        res.end(JSON.stringify({ authenticated: true, user: { username: 'Glomaint' } }));
+        return;
+      }
+
+      if (req.url === '/api/admin/logout') {
+        res.end(JSON.stringify({ ok: true }));
+        return;
+      }
+
       next();
     });
   },

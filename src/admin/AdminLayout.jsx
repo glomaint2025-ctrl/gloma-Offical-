@@ -13,28 +13,64 @@ export default function AdminLayout() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const auth = sessionStorage.getItem('admin_auth');
-    if (auth === 'true') {
+    const token = sessionStorage.getItem('admin_token');
+    if (token) {
       setIsAuthenticated(true);
+      fetch('/api/admin/verify', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then((r) => r.json())
+        .then((d) => {
+          if (!d.authenticated) {
+            handleLogout();
+          }
+        })
+        .catch(() => {});
     }
   }, []);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    if (username === 'Glomainr' && password === 'Glomaint2025') {
-      setIsAuthenticated(true);
-      sessionStorage.setItem('admin_auth', 'true');
-      setError('');
-    } else {
-      setError('Invalid username or password.');
+    setError('');
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        setIsAuthenticated(true);
+        sessionStorage.setItem('admin_token', data.token);
+        sessionStorage.setItem('admin_user', data.user.username);
+        setError('');
+        setPassword('');
+      } else {
+        setError(data.error || 'Invalid username or password.');
+      }
+    } catch (err) {
+      setError('Unable to connect to authentication server.');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleLogout = () => {
+    const token = sessionStorage.getItem('admin_token');
+    if (token) {
+      fetch('/api/admin/logout', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      }).catch(() => {});
+    }
     setIsAuthenticated(false);
-    sessionStorage.removeItem('admin_auth');
+    sessionStorage.removeItem('admin_token');
+    sessionStorage.removeItem('admin_user');
   };
 
   if (!isAuthenticated) {
@@ -75,8 +111,8 @@ export default function AdminLayout() {
               />
             </div>
 
-            <button type="submit" className="admin-login-btn">
-              Sign In
+            <button type="submit" className="admin-login-btn" disabled={loading}>
+              {loading ? 'Signing In…' : 'Sign In'}
             </button>
           </form>
         </div>
