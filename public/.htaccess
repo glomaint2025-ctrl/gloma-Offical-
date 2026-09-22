@@ -29,10 +29,8 @@
   RewriteCond %{REQUEST_METHOD} OPTIONS
   RewriteRule ^(.*)$ $1 [R=200,L]
 
-  # Route all /api/* requests to /api/index.php if it exists
-  RewriteCond %{REQUEST_URI} ^/api/ [NC]
-  RewriteCond %{DOCUMENT_ROOT}/api/index.php -f
-  RewriteRule ^api/(.*)$ api/index.php [QSA,L]
+  # Route all /api requests to /api/index.php
+  RewriteRule ^api(/.*)?$ /api/index.php [QSA,L]
 
   # Do not rewrite existing files or directories
   RewriteCond %{REQUEST_FILENAME} -f [OR]
