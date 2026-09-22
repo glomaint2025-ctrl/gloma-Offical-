@@ -1,7 +1,7 @@
 <?php
 /**
- * Gloma International - Unified Server-Side API Router
- * Supports Apache / PHP on ServerByte (StackCP) with CORS, Firebase RTDB, and Telegram Integration.
+ * Gloma International - Unified Server-Side API Router (MySQL + Telegram)
+ * Built for ServerByte (StackCP) Apache / PHP with native MySQL, CORS, and Telegram alerts.
  */
 
 // 1. Set Full CORS and Security Headers
@@ -40,7 +40,6 @@ loadEnv(__DIR__ . '/.env');
 loadEnv(__DIR__ . '/../.env');
 loadEnv(dirname(__DIR__, 2) . '/.env');
 
-// Helper to get environment variable
 function env($key, $default = '') {
     $val = getenv($key);
     if ($val !== false && $val !== '') return $val;
@@ -48,21 +47,111 @@ function env($key, $default = '') {
     return $default;
 }
 
-// 3. Parse Route
-$uri = $_SERVER['REQUEST_URI'] ?? '/';
-$path = parse_url($uri, PHP_URL_PATH);
-// Strip base /api/ or api/
-$route = preg_replace('#^/?api/#', '', $path);
-$route = trim($route, '/');
-if (empty($route) && isset($_GET['route'])) {
-    $route = trim($_GET['route'], '/');
+// 3. MySQL Database Connection via PDO
+function getDb() {
+    static $pdo = null;
+    if ($pdo !== null) return $pdo;
+
+    $host = env('DB_HOST', 'localhost');
+    $name = env('DB_NAME', '');
+    $user = env('DB_USER', '');
+    $pass = env('DB_PASS', '');
+    $port = env('DB_PORT', '3306');
+
+    if (empty($name) || empty($user)) {
+        return null; // DB credentials not provided, fall back gracefully
+    }
+
+    try {
+        $dsn = "mysql:host={$host};port={$port};dbname={$name};charset=utf8mb4";
+        $pdo = new PDO($dsn, $user, $pass, [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_TIMEOUT => 5,
+        ]);
+        initDatabaseTables($pdo);
+        return $pdo;
+    } catch (PDOException $e) {
+        error_log("Database connection failed: " . $e->getMessage());
+        return null;
+    }
 }
 
-$method = $_SERVER['REQUEST_METHOD'];
-$bodyJson = file_get_contents('php://input');
-$body = json_decode($bodyJson, true) ?: [];
+// Auto-create tables on first run if they don't exist
+function initDatabaseTables(PDO $pdo) {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS `leads` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `name` VARCHAR(255) NOT NULL,
+            `email` VARCHAR(255) NOT NULL,
+            `phone` VARCHAR(100) NULL,
+            `service` VARCHAR(255) NULL,
+            `message` TEXT NOT NULL,
+            `status` VARCHAR(50) DEFAULT 'new',
+            `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-// 4. Default Seed Data (Fallback if Firebase is not yet configured)
+        CREATE TABLE IF NOT EXISTS `services` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `title` VARCHAR(255) NOT NULL,
+            `text` TEXT NOT NULL,
+            `items` TEXT NULL,
+            `icon_key` VARCHAR(100) NOT NULL,
+            `sort_order` INT DEFAULT 0,
+            `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+        CREATE TABLE IF NOT EXISTS `works` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `category` VARCHAR(100) NOT NULL,
+            `cat_label` VARCHAR(100) NOT NULL,
+            `title` VARCHAR(255) NOT NULL,
+            `link` VARCHAR(500) NULL,
+            `img` VARCHAR(500) NULL,
+            `sort_order` INT DEFAULT 0,
+            `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+        CREATE TABLE IF NOT EXISTS `reviews` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `quote` TEXT NOT NULL,
+            `name` VARCHAR(255) NOT NULL,
+            `role` VARCHAR(255) NOT NULL,
+            `sort_order` INT DEFAULT 0,
+            `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ");
+
+    // Auto-seed if empty
+    $countServices = (int)$pdo->query("SELECT COUNT(*) FROM `services`")->fetchColumn();
+    if ($countServices === 0) {
+        global $DEFAULT_SERVICES;
+        $stmt = $pdo->prepare("INSERT INTO `services` (`title`, `text`, `items`, `icon_key`, `sort_order`) VALUES (?, ?, ?, ?, ?)");
+        foreach ($DEFAULT_SERVICES as $s) {
+            $stmt->execute([$s['title'], $s['text'], json_encode($s['items']), $s['icon_key'], $s['sort_order']]);
+        }
+    }
+
+    $countWorks = (int)$pdo->query("SELECT COUNT(*) FROM `works`")->fetchColumn();
+    if ($countWorks === 0) {
+        global $DEFAULT_WORKS;
+        $stmt = $pdo->prepare("INSERT INTO `works` (`category`, `cat_label`, `title`, `link`, `img`, `sort_order`) VALUES (?, ?, ?, ?, ?, ?)");
+        foreach ($DEFAULT_WORKS as $w) {
+            $stmt->execute([$w['category'], $w['cat_label'], $w['title'], $w['link'], $w['img'], $w['sort_order']]);
+        }
+    }
+
+    $countReviews = (int)$pdo->query("SELECT COUNT(*) FROM `reviews`")->fetchColumn();
+    if ($countReviews === 0) {
+        global $DEFAULT_REVIEWS;
+        $stmt = $pdo->prepare("INSERT INTO `reviews` (`quote`, `name`, `role`, `sort_order`) VALUES (?, ?, ?, ?)");
+        foreach ($DEFAULT_REVIEWS as $r) {
+            $stmt->execute([$r['quote'], $r['name'], $r['role'], $r['sort_order']]);
+        }
+    }
+}
+
+// 4. Default Seed Data (In-memory fallback if MySQL not yet configured)
 $DEFAULT_SERVICES = [
     ['id' => '1', 'title' => 'Web Development', 'text' => 'Custom, responsive websites and web apps engineered for speed, SEO, and conversions — from landing pages to full platforms.', 'items' => ['Business & e-commerce websites', 'Custom web applications', 'Website maintenance & support', 'Speed & SEO optimization'], 'icon_key' => 'web', 'sort_order' => 0],
     ['id' => '2', 'title' => 'Social Media Handling', 'text' => 'End-to-end management of your social channels — strategy, content calendars, posting, and community engagement.', 'items' => ['Platform strategy & growth', 'Content scheduling & posting', 'Community management', 'Performance reporting'], 'icon_key' => 'social', 'sort_order' => 1],
@@ -100,47 +189,21 @@ $DEFAULT_REVIEWS = [
     ['id' => '12', 'quote' => 'They took over our video content and views tripled in two months. The strategy just works.', 'name' => 'Aisha Khan', 'role' => 'Creator, DailyBite', 'sort_order' => 11],
 ];
 
-// Helper: Firebase REST API helper
-function firebaseRequest($path, $method = 'GET', $data = null) {
-    $dbUrl = rtrim(env('FIREBASE_DATABASE_URL'), '/');
-    if (empty($dbUrl)) return null;
-
-    $url = $dbUrl . '/' . ltrim($path, '/') . '.json';
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 6);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-
-    if ($data !== null) {
-        $payload = json_encode($data);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'Content-Length: ' . strlen($payload)]);
-    }
-
-    $res = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($httpCode >= 200 && $httpCode < 300) {
-        return json_decode($res, true);
-    }
-    return null;
+// 5. Parse Route
+$uri = $_SERVER['REQUEST_URI'] ?? '/';
+$path = parse_url($uri, PHP_URL_PATH);
+$route = preg_replace('#^/?api/#', '', $path);
+$route = trim($route, '/');
+if (empty($route) && isset($_GET['route'])) {
+    $route = trim($_GET['route'], '/');
 }
 
-function snapshotToArray($val) {
-    if (!$val || !is_array($val)) return [];
-    $arr = [];
-    foreach ($val as $id => $fields) {
-        if (is_array($fields)) {
-            $fields['id'] = $id;
-            $arr[] = $fields;
-        }
-    }
-    return $arr;
-}
+$method = $_SERVER['REQUEST_METHOD'];
+$bodyJson = file_get_contents('php://input');
+$body = json_decode($bodyJson, true) ?: [];
+$pdo = getDb();
 
-// 5. Route Handling
+// 6. Route Dispatcher
 switch ($route) {
     case 'contact':
         if ($method !== 'POST') {
@@ -161,18 +224,17 @@ switch ($route) {
             exit;
         }
 
-        // Save to Firebase RTDB if configured
-        firebaseRequest('leads', 'POST', [
-            'name' => $name,
-            'email' => $email,
-            'phone' => $phone ?: null,
-            'service' => $service ?: null,
-            'message' => $message,
-            'status' => 'new',
-            'created_at' => date('c'),
-        ]);
+        // Save to MySQL database if available
+        if ($pdo) {
+            try {
+                $stmt = $pdo->prepare("INSERT INTO `leads` (`name`, `email`, `phone`, `service`, `message`, `status`) VALUES (?, ?, ?, ?, ?, 'new')");
+                $stmt->execute([$name, $email, $phone ?: null, $service ?: null, $message]);
+            } catch (Exception $e) {
+                error_log("Failed to insert lead into MySQL: " . $e->getMessage());
+            }
+        }
 
-        // Send Telegram notification if configured
+        // Send Telegram alert if token and chat ID are provided
         $token = env('TELEGRAM_BOT_TOKEN');
         $chatId = env('TELEGRAM_CHAT_ID');
         $notified = false;
@@ -199,27 +261,47 @@ switch ($route) {
 
     case 'services':
         if ($method === 'GET') {
-            $data = firebaseRequest('services', 'GET');
-            $services = $data ? snapshotToArray($data) : $DEFAULT_SERVICES;
-            usort($services, fn($a, $b) => ($a['sort_order'] ?? 0) <=> ($b['sort_order'] ?? 0));
-            echo json_encode(['services' => $services]);
+            if ($pdo) {
+                $stmt = $pdo->query("SELECT * FROM `services` ORDER BY `sort_order` ASC, `id` ASC");
+                $rows = $stmt->fetchAll();
+                foreach ($rows as &$r) {
+                    $r['items'] = json_decode($r['items'] ?? '[]', true) ?: [];
+                }
+                echo json_encode(['services' => $rows]);
+                exit;
+            }
+            echo json_encode(['services' => $DEFAULT_SERVICES]);
             exit;
         }
+
         if ($method === 'POST') {
-            $res = firebaseRequest('services', 'POST', $body);
-            echo json_encode(['service' => $res ?: $body]);
+            if ($pdo) {
+                $stmt = $pdo->prepare("INSERT INTO `services` (`title`, `text`, `items`, `icon_key`, `sort_order`) VALUES (?, ?, ?, ?, ?)");
+                $stmt->execute([$body['title'] ?? '', $body['text'] ?? '', json_encode($body['items'] ?? []), $body['icon_key'] ?? '', (int)($body['sort_order'] ?? 0)]);
+                $id = $pdo->lastInsertId();
+                echo json_encode(['service' => array_merge(['id' => $id], $body)]);
+                exit;
+            }
+            echo json_encode(['service' => $body]);
             exit;
         }
+
         if ($method === 'PUT') {
-            $id = $body['id'] ?? '';
-            unset($body['id']);
-            $res = firebaseRequest("services/{$id}", 'PUT', $body);
-            echo json_encode(['service' => $res ?: $body]);
+            $id = $body['id'] ?? 0;
+            if ($pdo && $id) {
+                $stmt = $pdo->prepare("UPDATE `services` SET `title` = ?, `text` = ?, `items` = ?, `icon_key` = ?, `sort_order` = ? WHERE `id` = ?");
+                $stmt->execute([$body['title'] ?? '', $body['text'] ?? '', json_encode($body['items'] ?? []), $body['icon_key'] ?? '', (int)($body['sort_order'] ?? 0), $id]);
+            }
+            echo json_encode(['service' => $body]);
             exit;
         }
+
         if ($method === 'DELETE') {
-            $id = $body['id'] ?? '';
-            firebaseRequest("services/{$id}", 'DELETE');
+            $id = $body['id'] ?? 0;
+            if ($pdo && $id) {
+                $stmt = $pdo->prepare("DELETE FROM `services` WHERE `id` = ?");
+                $stmt->execute([$id]);
+            }
             echo json_encode(['ok' => true]);
             exit;
         }
@@ -227,27 +309,43 @@ switch ($route) {
 
     case 'works':
         if ($method === 'GET') {
-            $data = firebaseRequest('works', 'GET');
-            $works = $data ? snapshotToArray($data) : $DEFAULT_WORKS;
-            usort($works, fn($a, $b) => ($a['sort_order'] ?? 0) <=> ($b['sort_order'] ?? 0));
-            echo json_encode(['works' => $works]);
+            if ($pdo) {
+                $stmt = $pdo->query("SELECT * FROM `works` ORDER BY `sort_order` ASC, `id` ASC");
+                echo json_encode(['works' => $stmt->fetchAll()]);
+                exit;
+            }
+            echo json_encode(['works' => $DEFAULT_WORKS]);
             exit;
         }
+
         if ($method === 'POST') {
-            $res = firebaseRequest('works', 'POST', $body);
-            echo json_encode(['work' => $res ?: $body]);
+            if ($pdo) {
+                $stmt = $pdo->prepare("INSERT INTO `works` (`category`, `cat_label`, `title`, `link`, `img`, `sort_order`) VALUES (?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$body['category'] ?? '', $body['cat_label'] ?? '', $body['title'] ?? '', $body['link'] ?? null, $body['img'] ?? null, (int)($body['sort_order'] ?? 0)]);
+                $id = $pdo->lastInsertId();
+                echo json_encode(['work' => array_merge(['id' => $id], $body)]);
+                exit;
+            }
+            echo json_encode(['work' => $body]);
             exit;
         }
+
         if ($method === 'PUT') {
-            $id = $body['id'] ?? '';
-            unset($body['id']);
-            $res = firebaseRequest("works/{$id}", 'PUT', $body);
-            echo json_encode(['work' => $res ?: $body]);
+            $id = $body['id'] ?? 0;
+            if ($pdo && $id) {
+                $stmt = $pdo->prepare("UPDATE `works` SET `category` = ?, `cat_label` = ?, `title` = ?, `link` = ?, `img` = ?, `sort_order` = ? WHERE `id` = ?");
+                $stmt->execute([$body['category'] ?? '', $body['cat_label'] ?? '', $body['title'] ?? '', $body['link'] ?? null, $body['img'] ?? null, (int)($body['sort_order'] ?? 0), $id]);
+            }
+            echo json_encode(['work' => $body]);
             exit;
         }
+
         if ($method === 'DELETE') {
-            $id = $body['id'] ?? '';
-            firebaseRequest("works/{$id}", 'DELETE');
+            $id = $body['id'] ?? 0;
+            if ($pdo && $id) {
+                $stmt = $pdo->prepare("DELETE FROM `works` WHERE `id` = ?");
+                $stmt->execute([$id]);
+            }
             echo json_encode(['ok' => true]);
             exit;
         }
@@ -255,27 +353,43 @@ switch ($route) {
 
     case 'reviews':
         if ($method === 'GET') {
-            $data = firebaseRequest('reviews', 'GET');
-            $reviews = $data ? snapshotToArray($data) : $DEFAULT_REVIEWS;
-            usort($reviews, fn($a, $b) => ($a['sort_order'] ?? 0) <=> ($b['sort_order'] ?? 0));
-            echo json_encode(['reviews' => $reviews]);
+            if ($pdo) {
+                $stmt = $pdo->query("SELECT * FROM `reviews` ORDER BY `sort_order` ASC, `id` ASC");
+                echo json_encode(['reviews' => $stmt->fetchAll()]);
+                exit;
+            }
+            echo json_encode(['reviews' => $DEFAULT_REVIEWS]);
             exit;
         }
+
         if ($method === 'POST') {
-            $res = firebaseRequest('reviews', 'POST', $body);
-            echo json_encode(['review' => $res ?: $body]);
+            if ($pdo) {
+                $stmt = $pdo->prepare("INSERT INTO `reviews` (`quote`, `name`, `role`, `sort_order`) VALUES (?, ?, ?, ?)");
+                $stmt->execute([$body['quote'] ?? '', $body['name'] ?? '', $body['role'] ?? '', (int)($body['sort_order'] ?? 0)]);
+                $id = $pdo->lastInsertId();
+                echo json_encode(['review' => array_merge(['id' => $id], $body)]);
+                exit;
+            }
+            echo json_encode(['review' => $body]);
             exit;
         }
+
         if ($method === 'PUT') {
-            $id = $body['id'] ?? '';
-            unset($body['id']);
-            $res = firebaseRequest("reviews/{$id}", 'PUT', $body);
-            echo json_encode(['review' => $res ?: $body]);
+            $id = $body['id'] ?? 0;
+            if ($pdo && $id) {
+                $stmt = $pdo->prepare("UPDATE `reviews` SET `quote` = ?, `name` = ?, `role` = ?, `sort_order` = ? WHERE `id` = ?");
+                $stmt->execute([$body['quote'] ?? '', $body['name'] ?? '', $body['role'] ?? '', (int)($body['sort_order'] ?? 0), $id]);
+            }
+            echo json_encode(['review' => $body]);
             exit;
         }
+
         if ($method === 'DELETE') {
-            $id = $body['id'] ?? '';
-            firebaseRequest("reviews/{$id}", 'DELETE');
+            $id = $body['id'] ?? 0;
+            if ($pdo && $id) {
+                $stmt = $pdo->prepare("DELETE FROM `reviews` WHERE `id` = ?");
+                $stmt->execute([$id]);
+            }
             echo json_encode(['ok' => true]);
             exit;
         }
@@ -283,21 +397,32 @@ switch ($route) {
 
     case 'admin/leads':
         if ($method === 'GET') {
-            $data = firebaseRequest('leads', 'GET');
-            $leads = $data ? snapshotToArray($data) : [];
-            echo json_encode(['leads' => $leads]);
+            if ($pdo) {
+                $stmt = $pdo->query("SELECT * FROM `leads` ORDER BY `created_at` DESC, `id` DESC");
+                echo json_encode(['leads' => $stmt->fetchAll()]);
+                exit;
+            }
+            echo json_encode(['leads' => []]);
             exit;
         }
+
         if ($method === 'PUT') {
-            $id = $body['id'] ?? '';
-            unset($body['id']);
-            $res = firebaseRequest("leads/{$id}", 'PATCH', $body);
-            echo json_encode(['lead' => $res ?: $body]);
+            $id = $body['id'] ?? 0;
+            $status = $body['status'] ?? 'new';
+            if ($pdo && $id) {
+                $stmt = $pdo->prepare("UPDATE `leads` SET `status` = ? WHERE `id` = ?");
+                $stmt->execute([$status, $id]);
+            }
+            echo json_encode(['lead' => $body]);
             exit;
         }
+
         if ($method === 'DELETE') {
-            $id = $body['id'] ?? '';
-            firebaseRequest("leads/{$id}", 'DELETE');
+            $id = $body['id'] ?? 0;
+            if ($pdo && $id) {
+                $stmt = $pdo->prepare("DELETE FROM `leads` WHERE `id` = ?");
+                $stmt->execute([$id]);
+            }
             echo json_encode(['ok' => true]);
             exit;
         }
