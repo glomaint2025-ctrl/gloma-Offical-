@@ -13,17 +13,26 @@
   Header always set Referrer-Policy "strict-origin-when-cross-origin"
 </IfModule>
 
-# Block direct access to .env and hidden files
-<FilesMatch "^\.env">
-  Order allow,deny
-  Deny from all
+# Block direct access to .env and hidden configuration files
+<FilesMatch "(^\.env|\.git|\.env\.)">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+  </IfModule>
 </FilesMatch>
-
 
 # 2. URL Rewriting for React SPA & API
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
+
+  # Automatically redirect HTTP to HTTPS
+  RewriteCond %{HTTPS} !=on
+  RewriteCond %{HTTP:X-Forwarded-Proto} !https
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
   # Respond immediately to HTTP OPTIONS preflight requests
   RewriteCond %{REQUEST_METHOD} OPTIONS
