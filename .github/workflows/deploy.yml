@@ -10,8 +10,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      SSH_HOST: ${{ secrets.SERVERBYTE_SSH_HOST || secrets.SSH_HOST }}
-      SSH_USER: ${{ secrets.SERVERBYTE_SSH_USER || secrets.SSH_USER || 'glomaint.com' }}
+      SSH_HOST: ${{ secrets.SERVERBYTE_SSH_HOST || secrets.SSH_HOST || 'ssh.us.stackcp.com' }}
+      SSH_USER: ${{ secrets.SERVERBYTE_SSH_USER || secrets.SSH_USER || 'pettahmall.com' }}
       SSH_PORT: ${{ secrets.SERVERBYTE_SSH_PORT || secrets.SSH_PORT || '22' }}
       SSH_KEY: ${{ secrets.SERVERBYTE_SSH_KEY || secrets.SSH_PRIVATE_KEY }}
       TARGET_PATH: ${{ secrets.SERVERBYTE_SSH_PATH || secrets.FRONTEND_SSH_PATH || 'glomaint.com/web' }}
