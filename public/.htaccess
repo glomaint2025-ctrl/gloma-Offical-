@@ -38,13 +38,13 @@
   RewriteCond %{REQUEST_METHOD} OPTIONS
   RewriteRule ^(.*)$ $1 [R=200,L]
 
-  # Route all /api requests to /api/index.php
-  RewriteRule ^api(/.*)?$ /api/index.php [QSA,L]
-
-  # Do not rewrite existing files or directories
+  # Do not rewrite existing files or directories (prevents infinite loop for api/index.php & assets)
   RewriteCond %{REQUEST_FILENAME} -f [OR]
   RewriteCond %{REQUEST_FILENAME} -d
   RewriteRule ^ - [L]
+
+  # Route all /api requests to /api/index.php
+  RewriteRule ^api(/.*)?$ /api/index.php [QSA,L]
 
   # Fallback all client routes to index.html for React Router
   RewriteRule ^ index.html [L]

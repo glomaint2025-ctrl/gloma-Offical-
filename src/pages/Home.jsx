@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import usePageTitle from '../usePageTitle.js';
 import TransitionLink from '../components/TransitionLink.jsx';
 import ArrowIcon from '../components/ArrowIcon.jsx';
@@ -6,12 +6,53 @@ import Reveal from '../components/Reveal.jsx';
 import SplitReveal from '../components/SplitReveal.jsx';
 import CountUp from '../components/CountUp.jsx';
 import CtaBand from '../components/CtaBand.jsx';
+import { SERVICE_ICONS } from '../serviceIcons.jsx';
 
+const DEFAULT_HOME_SERVICES = [
+  { id: '1', icon_key: 'web', title: 'Web Development', text: 'Fast, responsive, and scalable websites built to convert visitors into customers.' },
+  { id: '2', icon_key: 'social', title: 'Social Media Handling', text: 'Strategy, scheduling, and community management that builds real engagement.' },
+  { id: '3', icon_key: 'content', title: 'Content Creation', text: 'Scroll-stopping visuals, video, and copy crafted for every platform.' },
+  { id: '4', icon_key: 'it', title: 'IT Solutions', text: 'Reliable infrastructure, systems integration, and technical support.' },
+  { id: '5', icon_key: 'branding', title: 'Advertising & Branding', text: 'Brand identity and campaigns that make a lasting impression.' },
+  { id: '6', icon_key: 'mobile', title: 'Mobile Apps', text: 'Native and cross-platform apps designed for performance and scale.' },
+];
 
+const DEFAULT_HOME_WORKS = [
+  { id: '1', category: 'web', cat_label: 'Web Development', title: 'Magic Mirror Art', link: 'https://magic-mirror-art.lovable.app' },
+  { id: '2', category: 'branding', cat_label: 'Branding', title: 'Pettah Mall', link: 'https://pettahmall.com/' },
+  { id: '3', category: 'social', cat_label: 'Social Media', title: "Russel's Catering", link: 'https://www.facebook.com/russelscatering', img: '/assets/russels-catering.png' },
+];
+
+const DEFAULT_HOME_REVIEWS = [
+  { id: '1', quote: 'Gloma International transformed our online presence. Their creativity and professionalism are unmatched.', name: 'Amina Yusuf', role: 'Founder, Velosea' },
+  { id: '2', quote: 'The team delivered a stunning app experience. Communication was smooth from start to finish.', name: 'David Okoro', role: 'CEO, Groceria' },
+  { id: '3', quote: 'Highly recommended. They understand branding and how it connects with an audience.', name: 'Sara Bello', role: 'Marketing Lead, Zenara' },
+];
 
 export default function Home() {
   usePageTitle('Gloma International — Web, Branding & Digital Solutions');
   const splineStageRef = useRef(null);
+
+  const [services, setServices] = useState(DEFAULT_HOME_SERVICES);
+  const [works, setWorks] = useState(DEFAULT_HOME_WORKS);
+  const [reviews, setReviews] = useState(DEFAULT_HOME_REVIEWS);
+
+  useEffect(() => {
+    fetch('/api/services')
+      .then((r) => r.json())
+      .then((d) => { if (d.services && d.services.length) setServices(d.services); })
+      .catch(() => {});
+
+    fetch('/api/works')
+      .then((r) => r.json())
+      .then((d) => { if (d.works && d.works.length) setWorks(d.works.slice(0, 3)); })
+      .catch(() => {});
+
+    fetch('/api/reviews')
+      .then((r) => r.json())
+      .then((d) => { if (d.reviews && d.reviews.length) setReviews(d.reviews.slice(0, 3)); })
+      .catch(() => {});
+  }, []);
 
   return (
     <>
@@ -96,17 +137,10 @@ export default function Home() {
             <SplitReveal>Services Built To Help You Scale</SplitReveal>
           </Reveal>
           <div className="services-grid">
-            {[
-              { num: '01', title: 'Web Development', text: 'Fast, responsive, and scalable websites built to convert visitors into customers.', icon: <><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></> },
-              { num: '02', title: 'Social Media Handling', text: 'Strategy, scheduling, and community management that builds real engagement.', icon: <><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></> },
-              { num: '03', title: 'Content Creation', text: 'Scroll-stopping visuals, video, and copy crafted for every platform.', icon: <><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></> },
-              { num: '04', title: 'IT Solutions', text: 'Reliable infrastructure, systems integration, and technical support.', icon: <><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></> },
-              { num: '05', title: 'Advertising & Branding', text: 'Brand identity and campaigns that make a lasting impression.', icon: <><path d="M3 11v3a1 1 0 0 0 1 1h2l4 4V6l-4 4H4a1 1 0 0 0-1 1z"/><path d="M15.5 8.5a4 4 0 0 1 0 7"/><path d="M18.5 5.5a8 8 0 0 1 0 13"/></> },
-              { num: '06', title: 'Mobile Apps', text: 'Native and cross-platform apps designed for performance and scale.', icon: <><rect x="7" y="2" width="10" height="20" rx="2"/><line x1="11" y1="18" x2="13" y2="18"/></> },
-            ].map((s) => (
-              <Reveal as="div" className="service-card" key={s.num}>
-                <div className="service-num">{s.num}</div>
-                <div className="icon-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{s.icon}</svg></div>
+            {services.map((s, idx) => (
+              <Reveal as="div" className="service-card" key={s.id || s.title || idx}>
+                <div className="service-num">{String(idx + 1).padStart(2, '0')}</div>
+                <div className="icon-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{SERVICE_ICONS[s.icon_key] || SERVICE_ICONS.web}</svg></div>
                 <h3>{s.title}</h3>
                 <p>{s.text}</p>
                 <TransitionLink to="/services" className="link-arrow">Explore →</TransitionLink>
@@ -123,12 +157,9 @@ export default function Home() {
             <SplitReveal>Selected Projects</SplitReveal>
           </Reveal>
           <div className="works-grid">
-            {[
-              { cat: 'Web Development', title: 'Magic Mirror Art', link: 'https://magic-mirror-art.lovable.app' },
-              { cat: 'Branding', title: 'Pettah Mall', link: 'https://pettahmall.com/' },
-              { cat: 'Social Media', title: 'Russel\'s Catering', link: 'https://www.facebook.com/russelscatering' },
-            ].map((w) => {
+            {works.map((w, idx) => {
               const Tag = w.link ? "a" : "div";
+              const catLabel = w.cat_label || w.cat || 'Web Development';
               return (
                 <Reveal 
                   as={Tag} 
@@ -136,21 +167,27 @@ export default function Home() {
                   target={w.link ? "_blank" : undefined}
                   rel={w.link ? "noopener noreferrer" : undefined}
                   className="work-card" 
-                  key={w.title}
+                  key={w.id || w.title || idx}
                   style={{ textDecoration: 'none' }}
                 >
                   <div className="work-thumb" style={{ overflow: 'hidden' }}>
-                    {w.link && (w.cat === 'Web Development' || w.cat === 'Branding') && (
+                    {w.link && (w.category === 'web' || w.category === 'branding' || catLabel.includes('Web') || catLabel.includes('Brand')) ? (
                       <iframe 
                         src={w.link} 
                         title={w.title}
                         scrolling="no" 
                         style={{ position: 'absolute', top: 0, left: 0, width: '400%', height: '400%', transform: 'scale(0.25)', transformOrigin: 'top left', border: 'none', pointerEvents: 'none' }} 
                       />
-                    )}
+                    ) : w.img ? (
+                      <img 
+                        src={w.img} 
+                        alt={w.title} 
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} 
+                      />
+                    ) : null}
                   </div>
                   <div className="work-glyph">↗</div>
-                  <div className="work-info"><div className="cat">{w.cat}</div><h3>{w.title}</h3></div>
+                  <div className="work-info"><div className="cat">{catLabel}</div><h3>{w.title}</h3></div>
                 </Reveal>
               );
             })}
@@ -192,15 +229,11 @@ export default function Home() {
             <SplitReveal>What Clients Say</SplitReveal>
           </Reveal>
           <div className="reviews-grid">
-            {[
-              { initial: 'A', quote: 'Gloma International transformed our online presence. Their creativity and professionalism are unmatched.', name: 'Amina Yusuf', role: 'Founder, Velosea' },
-              { initial: 'D', quote: 'The team delivered a stunning app experience. Communication was smooth from start to finish.', name: 'David Okoro', role: 'CEO, Groceria' },
-              { initial: 'S', quote: 'Highly recommended. They understand branding and how it connects with an audience.', name: 'Sara Bello', role: 'Marketing Lead, Zenara' },
-            ].map((r) => (
-              <Reveal as="div" className="review-card" key={r.name}>
+            {reviews.map((r, idx) => (
+              <Reveal as="div" className="review-card" key={r.id || r.name || idx}>
                 <div className="stars">★★★★★</div>
                 <p className="quote">"{r.quote}"</p>
-                <div className="reviewer"><div className="avatar">{r.initial}</div><div><div className="name">{r.name}</div><div className="role">{r.role}</div></div></div>
+                <div className="reviewer"><div className="avatar">{(r.name || 'C')[0]}</div><div><div className="name">{r.name}</div><div className="role">{r.role}</div></div></div>
               </Reveal>
             ))}
           </div>
