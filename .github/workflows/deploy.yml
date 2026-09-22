@@ -1,0 +1,127 @@
+name: Deploy to ServerByte Production (main)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      SSH_HOST: ${{ secrets.SERVERBYTE_SSH_HOST || secrets.SSH_HOST }}
+      SSH_USER: ${{ secrets.SERVERBYTE_SSH_USER || secrets.SSH_USER || 'glomaint.com' }}
+      SSH_PORT: ${{ secrets.SERVERBYTE_SSH_PORT || secrets.SSH_PORT || '22' }}
+      SSH_KEY: ${{ secrets.SERVERBYTE_SSH_KEY || secrets.SSH_PRIVATE_KEY }}
+      TARGET_PATH: ${{ secrets.SERVERBYTE_SSH_PATH || secrets.FRONTEND_SSH_PATH || 'glomaint.com/web' }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # ----------------------------------------------------
+      # Phase 1: Setup Node.js & Build Static Frontend
+      # ----------------------------------------------------
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Vite Production Bundle
+        run: npm run build
+
+      # ----------------------------------------------------
+      # Phase 2: Inject Server-Side Environment (.env)
+      # ----------------------------------------------------
+      - name: Generate server .env if secrets provided
+        run: |
+          mkdir -p dist
+          {
+            echo "# Gloma International Production Environment"
+            if [ -n "${{ secrets.TELEGRAM_BOT_TOKEN }}" ]; then
+              echo "TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}"
+            fi
+            if [ -n "${{ secrets.TELEGRAM_CHAT_ID }}" ]; then
+              echo "TELEGRAM_CHAT_ID=${{ secrets.TELEGRAM_CHAT_ID }}"
+            fi
+            if [ -n "${{ secrets.FIREBASE_PROJECT_ID }}" ]; then
+              echo "FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }}"
+            fi
+            if [ -n "${{ secrets.FIREBASE_CLIENT_EMAIL }}" ]; then
+              echo "FIREBASE_CLIENT_EMAIL=${{ secrets.FIREBASE_CLIENT_EMAIL }}"
+            fi
+            if [ -n "${{ secrets.FIREBASE_DATABASE_URL }}" ]; then
+              echo "FIREBASE_DATABASE_URL=${{ secrets.FIREBASE_DATABASE_URL }}"
+            fi
+          } > dist/.env
+
+      # ----------------------------------------------------
+      # Phase 3: Setup SSH Credentials
+      # ----------------------------------------------------
+      - name: Add SSH Key & Known Hosts
+        run: |
+          mkdir -p ~/.ssh
+          echo "${SSH_KEY}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "${SSH_PORT}" -H "${SSH_HOST}" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      # ----------------------------------------------------
+      # Phase 4: Create Pre-Deployment Snapshot Backup
+      # ----------------------------------------------------
+      - name: Snapshot current working version on ServerByte
+        run: |
+          ssh -4 -i ~/.ssh/deploy_key -p "${SSH_PORT}" -o StrictHostKeyChecking=no \
+            "${SSH_USER}@${SSH_HOST}" "
+              set -e
+              mkdir -p ~/.deploy_backups/last_known_good/web
+              if [ -d ~/${TARGET_PATH} ] && [ -n \"\$(ls -A ~/${TARGET_PATH} 2>/dev/null)\" ]; then
+                echo \"Creating snapshot backup of ~/${TARGET_PATH}...\"
+                rsync -az --delete ~/${TARGET_PATH}/ ~/.deploy_backups/last_known_good/web/
+              fi
+            "
+
+      # ----------------------------------------------------
+      # Phase 5: Deploy Build Output to ServerByte
+      # ----------------------------------------------------
+      - name: Sync dist/ to ServerByte docroot
+        run: |
+          ssh -4 -i ~/.ssh/deploy_key -p "${SSH_PORT}" -o StrictHostKeyChecking=no \
+            "${SSH_USER}@${SSH_HOST}" "mkdir -p ~/${TARGET_PATH}"
+
+          rsync -az --delete \
+            -e "ssh -4 -i ~/.ssh/deploy_key -p ${SSH_PORT} -o StrictHostKeyChecking=no" \
+            dist/ "${SSH_USER}@${SSH_HOST}:~/${TARGET_PATH}/"
+
+      # ----------------------------------------------------
+      # Phase 6: Verify Deployment Health
+      # ----------------------------------------------------
+      - name: Deployment Verification
+        run: |
+          echo "Verifying deployment at ServerByte..."
+          ssh -4 -i ~/.ssh/deploy_key -p "${SSH_PORT}" -o StrictHostKeyChecking=no \
+            "${SSH_USER}@${SSH_HOST}" "
+              if [ -f ~/${TARGET_PATH}/index.html ]; then
+                echo '✅ index.html is in place.'
+              else
+                echo '❌ index.html missing from ~/${TARGET_PATH}!'
+                exit 1
+              fi
+              if [ -f ~/${TARGET_PATH}/.htaccess ]; then
+                echo '✅ .htaccess is in place.'
+              else
+                echo '⚠️ Warning: .htaccess not found.'
+              fi
+            "
+
+      # ----------------------------------------------------
+      # Phase 7: Secure Cleanup
+      # ----------------------------------------------------
+      - name: Clean up SSH Key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

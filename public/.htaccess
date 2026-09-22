@@ -1,0 +1,56 @@
+# ------------------------------------------------------------------------------
+# Apache Configuration for Gloma International (React SPA on ServerByte)
+# ------------------------------------------------------------------------------
+
+# 1. CORS Headers (Allow cross-origin requests & prevent any CORS blocking)
+<IfModule mod_headers.c>
+  Header always set Access-Control-Allow-Origin "*"
+  Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+  Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, Accept, Origin"
+  Header always set Access-Control-Max-Age "86400"
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# 2. URL Rewriting for React SPA & API
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Respond immediately to HTTP OPTIONS preflight requests
+  RewriteCond %{REQUEST_METHOD} OPTIONS
+  RewriteRule ^(.*)$ $1 [R=200,L]
+
+  # Route all /api/* requests to /api/index.php if it exists
+  RewriteCond %{REQUEST_URI} ^/api/ [NC]
+  RewriteCond %{DOCUMENT_ROOT}/api/index.php -f
+  RewriteRule ^api/(.*)$ api/index.php [QSA,L]
+
+  # Do not rewrite existing files or directories
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Fallback all client routes to index.html for React Router
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+# 3. Compression for faster asset loading
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/x-javascript application/json application/xml image/svg+xml
+</IfModule>
+
+# 4. Cache Control for static assets
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresDefault "access plus 1 month"
+  ExpiresByType text/html "access plus 0 seconds"
+  ExpiresByType application/json "access plus 0 seconds"
+  ExpiresByType text/css "access plus 1 year"
+  ExpiresByType application/javascript "access plus 1 year"
+  ExpiresByType image/webp "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 1 year"
+  ExpiresByType image/png "access plus 1 year"
+  ExpiresByType image/jpeg "access plus 1 year"
+</IfModule>
