@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { adminFetch } from '../adminFetch.js';
 
 export default function Leads() {
   const [leads, setLeads] = useState([]);
@@ -6,7 +7,7 @@ export default function Leads() {
 
   const load = () => {
     setLoading(true);
-    fetch('/api/admin/leads')
+    adminFetch('/api/admin/leads')
       .then((r) => r.json())
       .then((data) => setLeads(data.leads || []))
       .catch((err) => console.error('Failed to load leads:', err))
@@ -17,9 +18,8 @@ export default function Leads() {
 
   const updateStatus = async (id, status) => {
     setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, status } : l)));
-    await fetch('/api/admin/leads', {
+    await adminFetch('/api/admin/leads', {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, status }),
     });
   };
@@ -27,9 +27,8 @@ export default function Leads() {
   const remove = async (id) => {
     if (!confirm('Delete this lead?')) return;
     setLeads((prev) => prev.filter((l) => l.id !== id));
-    await fetch('/api/admin/leads', {
+    await adminFetch('/api/admin/leads', {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
     });
   };

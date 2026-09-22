@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { adminFetch } from '../adminFetch.js';
 
 const EMPTY = { category: 'web', cat_label: 'Web Development', title: '', link: '', img: '', sort_order: 0 };
 
@@ -9,7 +10,7 @@ export default function WorksAdmin() {
 
   const load = () => {
     setLoading(true);
-    fetch('/api/works')
+    adminFetch('/api/works')
       .then((r) => r.json())
       .then((data) => setWorks(data.works || []))
       .catch((err) => console.error('Failed to load works:', err))
@@ -21,9 +22,8 @@ export default function WorksAdmin() {
   const save = async (e) => {
     e.preventDefault();
     const isNew = !editing.id;
-    await fetch('/api/works', {
+    await adminFetch('/api/works', {
       method: isNew ? 'POST' : 'PUT',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(editing),
     });
     setEditing(null);
@@ -32,9 +32,8 @@ export default function WorksAdmin() {
 
   const remove = async (id) => {
     if (!confirm('Delete this project?')) return;
-    await fetch('/api/works', {
+    await adminFetch('/api/works', {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
     });
     load();

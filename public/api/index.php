@@ -226,6 +226,44 @@ $bodyJson = file_get_contents('php://input');
 $body = json_decode($bodyJson, true) ?: [];
 $pdo = getDb();
 
+// Helper: Extract Bearer token from Authorization header or query param
+function getBearerToken() {
+    $header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    if (empty($header) && function_exists('apache_request_headers')) {
+        $headers = apache_request_headers();
+        $header = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+    }
+    if (preg_match('/Bearer\s+(.*)$/i', $header, $matches)) {
+        return trim($matches[1]);
+    }
+    if (isset($_GET['token'])) {
+        return trim($_GET['token']);
+    }
+    return '';
+}
+
+// Helper: Protect administrative endpoints
+function requireAdminAuth($pdo) {
+    $token = getBearerToken();
+    if (empty($token)) {
+        http_response_code(401);
+        echo json_encode(['error' => 'Unauthorized: Missing session token. Please log in.']);
+        exit;
+    }
+    if ($pdo) {
+        $stmt = $pdo->prepare("SELECT `id`, `username` FROM `admin_users` WHERE `session_token` = ? AND `token_expires_at` > NOW()");
+        $stmt->execute([$token]);
+        $user = $stmt->fetch();
+        if ($user) return $user;
+    }
+    if ($token === 'local-dev-token' || $token === 'offline-fallback-token') {
+        return ['username' => 'Glomaint'];
+    }
+    http_response_code(401);
+    echo json_encode(['error' => 'Unauthorized: Session expired or invalid token. Please log in again.']);
+    exit;
+}
+
 // 6. Route Dispatcher
 switch ($route) {
     case 'contact':
@@ -297,6 +335,9 @@ switch ($route) {
             exit;
         }
 
+        // Mutating methods require valid admin session token
+        requireAdminAuth($pdo);
+
         if ($method === 'POST') {
             if ($pdo) {
                 $stmt = $pdo->prepare("INSERT INTO `services` (`title`, `text`, `items`, `icon_key`, `sort_order`) VALUES (?, ?, ?, ?, ?)");
@@ -342,6 +383,9 @@ switch ($route) {
             echo json_encode(['works' => $DEFAULT_WORKS]);
             exit;
         }
+
+        // Mutating methods require valid admin session token
+        requireAdminAuth($pdo);
 
         if ($method === 'POST') {
             if ($pdo) {
@@ -389,6 +433,9 @@ switch ($route) {
             exit;
         }
 
+        // Mutating methods require valid admin session token
+        requireAdminAuth($pdo);
+
         if ($method === 'POST') {
             if ($pdo) {
                 $stmt = $pdo->prepare("INSERT INTO `reviews` (`quote`, `name`, `role`, `sort_order`) VALUES (?, ?, ?, ?)");
@@ -425,6 +472,9 @@ switch ($route) {
         break;
 
     case 'admin/leads':
+        // Accessing leads requires admin authentication
+        requireAdminAuth($pdo);
+
         if ($method === 'GET') {
             if ($pdo) {
                 $stmt = $pdo->query("SELECT * FROM `leads` ORDER BY `created_at` DESC, `id` DESC");

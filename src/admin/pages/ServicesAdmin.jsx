@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { SERVICE_ICON_KEYS } from '../../serviceIcons.jsx';
+import { adminFetch } from '../adminFetch.js';
 
 const EMPTY = { title: '', text: '', items: '', icon_key: SERVICE_ICON_KEYS[0], sort_order: 0 };
 
@@ -14,7 +15,7 @@ export default function ServicesAdmin() {
 
   const load = () => {
     setLoading(true);
-    fetch('/api/services')
+    adminFetch('/api/services')
       .then((r) => r.json())
       .then((data) => setServices(data.services || []))
       .catch((err) => console.error('Failed to load services:', err))
@@ -30,9 +31,8 @@ export default function ServicesAdmin() {
       ...editing,
       items: editing.items.split('\n').map((s) => s.trim()).filter(Boolean),
     };
-    await fetch('/api/services', {
+    await adminFetch('/api/services', {
       method: isNew ? 'POST' : 'PUT',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
     setEditing(null);
@@ -41,9 +41,8 @@ export default function ServicesAdmin() {
 
   const remove = async (id) => {
     if (!confirm('Delete this service?')) return;
-    await fetch('/api/services', {
+    await adminFetch('/api/services', {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
     });
     load();

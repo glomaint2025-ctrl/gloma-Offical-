@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { adminFetch } from '../adminFetch.js';
 
 const EMPTY = { quote: '', name: '', role: '', sort_order: 0 };
 
@@ -9,7 +10,7 @@ export default function ReviewsAdmin() {
 
   const load = () => {
     setLoading(true);
-    fetch('/api/reviews')
+    adminFetch('/api/reviews')
       .then((r) => r.json())
       .then((data) => setReviews(data.reviews || []))
       .catch((err) => console.error('Failed to load reviews:', err))
@@ -21,9 +22,8 @@ export default function ReviewsAdmin() {
   const save = async (e) => {
     e.preventDefault();
     const isNew = !editing.id;
-    await fetch('/api/reviews', {
+    await adminFetch('/api/reviews', {
       method: isNew ? 'POST' : 'PUT',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(editing),
     });
     setEditing(null);
@@ -32,9 +32,8 @@ export default function ReviewsAdmin() {
 
   const remove = async (id) => {
     if (!confirm('Delete this review?')) return;
-    await fetch('/api/reviews', {
+    await adminFetch('/api/reviews', {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
     });
     load();
