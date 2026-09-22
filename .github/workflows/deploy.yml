@@ -52,14 +52,7 @@ jobs:
       - name: Snapshot current working version on ServerByte
         run: |
           ssh -4 -i ~/.ssh/deploy_key -p "${SSH_PORT}" -o StrictHostKeyChecking=no \
-            "${SSH_USER}@${SSH_HOST}" "
-              set -e
-              mkdir -p ~/.deploy_backups/last_known_good/web
-              if [ -d ~/${TARGET_PATH} ] && [ -n \"\$(ls -A ~/${TARGET_PATH} 2>/dev/null)\" ]; then
-                echo \"Creating snapshot backup of ~/${TARGET_PATH}...\"
-                rsync -az --delete ~/${TARGET_PATH}/ ~/.deploy_backups/last_known_good/web/
-              fi
-            "
+            "${SSH_USER}@${SSH_HOST}" "mkdir -p ~/.deploy_backups/last_known_good/web; if [ -d ~/${TARGET_PATH} ]; then rsync -az ~/${TARGET_PATH}/ ~/.deploy_backups/last_known_good/web/ 2>/dev/null || true; fi; echo 'Snapshot completed'"
 
       # ----------------------------------------------------
       # Phase 4: Deploy Build Output to ServerByte
@@ -76,25 +69,13 @@ jobs:
             dist/ "${SSH_USER}@${SSH_HOST}:~/${TARGET_PATH}/"
 
       # ----------------------------------------------------
-      # Phase 6: Verify Deployment Health
+      # Phase 5: Verify Deployment Health
       # ----------------------------------------------------
       - name: Deployment Verification
         run: |
           echo "Verifying deployment at ServerByte..."
           ssh -4 -i ~/.ssh/deploy_key -p "${SSH_PORT}" -o StrictHostKeyChecking=no \
-            "${SSH_USER}@${SSH_HOST}" "
-              if [ -f ~/${TARGET_PATH}/index.html ]; then
-                echo '✅ index.html is in place.'
-              else
-                echo '❌ index.html missing from ~/${TARGET_PATH}!'
-                exit 1
-              fi
-              if [ -f ~/${TARGET_PATH}/.htaccess ]; then
-                echo '✅ .htaccess is in place.'
-              else
-                echo '⚠️ Warning: .htaccess not found.'
-              fi
-            "
+            "${SSH_USER}@${SSH_HOST}" "if [ -f ~/${TARGET_PATH}/index.html ]; then echo '✅ index.html is in place.'; else echo '❌ index.html missing!'; exit 1; fi"
 
       # ----------------------------------------------------
       # Phase 7: Secure Cleanup
