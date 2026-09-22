@@ -278,10 +278,12 @@ switch ($route) {
             if ($pdo) {
                 $stmt = $pdo->prepare("INSERT INTO `services` (`title`, `text`, `items`, `icon_key`, `sort_order`) VALUES (?, ?, ?, ?, ?)");
                 $stmt->execute([$body['title'] ?? '', $body['text'] ?? '', json_encode($body['items'] ?? []), $body['icon_key'] ?? '', (int)($body['sort_order'] ?? 0)]);
-                $id = $pdo->lastInsertId();
+                $id = (int)$pdo->lastInsertId();
+                http_response_code(201);
                 echo json_encode(['service' => array_merge(['id' => $id], $body)]);
                 exit;
             }
+            http_response_code(201);
             echo json_encode(['service' => $body]);
             exit;
         }
@@ -322,10 +324,12 @@ switch ($route) {
             if ($pdo) {
                 $stmt = $pdo->prepare("INSERT INTO `works` (`category`, `cat_label`, `title`, `link`, `img`, `sort_order`) VALUES (?, ?, ?, ?, ?, ?)");
                 $stmt->execute([$body['category'] ?? '', $body['cat_label'] ?? '', $body['title'] ?? '', $body['link'] ?? null, $body['img'] ?? null, (int)($body['sort_order'] ?? 0)]);
-                $id = $pdo->lastInsertId();
+                $id = (int)$pdo->lastInsertId();
+                http_response_code(201);
                 echo json_encode(['work' => array_merge(['id' => $id], $body)]);
                 exit;
             }
+            http_response_code(201);
             echo json_encode(['work' => $body]);
             exit;
         }
@@ -366,10 +370,12 @@ switch ($route) {
             if ($pdo) {
                 $stmt = $pdo->prepare("INSERT INTO `reviews` (`quote`, `name`, `role`, `sort_order`) VALUES (?, ?, ?, ?)");
                 $stmt->execute([$body['quote'] ?? '', $body['name'] ?? '', $body['role'] ?? '', (int)($body['sort_order'] ?? 0)]);
-                $id = $pdo->lastInsertId();
+                $id = (int)$pdo->lastInsertId();
+                http_response_code(201);
                 echo json_encode(['review' => array_merge(['id' => $id], $body)]);
                 exit;
             }
+            http_response_code(201);
             echo json_encode(['review' => $body]);
             exit;
         }
@@ -406,14 +412,14 @@ switch ($route) {
             exit;
         }
 
-        if ($method === 'PUT') {
+        if ($method === 'PATCH' || $method === 'PUT') {
             $id = $body['id'] ?? 0;
             $status = $body['status'] ?? 'new';
             if ($pdo && $id) {
                 $stmt = $pdo->prepare("UPDATE `leads` SET `status` = ? WHERE `id` = ?");
                 $stmt->execute([$status, $id]);
             }
-            echo json_encode(['lead' => $body]);
+            echo json_encode(['ok' => true]);
             exit;
         }
 
