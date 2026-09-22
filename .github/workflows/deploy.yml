@@ -37,39 +37,7 @@ jobs:
         run: npm run build
 
       # ----------------------------------------------------
-      # Phase 2: Inject Server-Side Environment (.env)
-      # ----------------------------------------------------
-      - name: Generate server .env if secrets provided
-        run: |
-          mkdir -p dist
-          {
-            echo "# Gloma International Production Environment"
-            if [ -n "${{ secrets.DB_NAME }}" ]; then
-              echo "DB_HOST=${{ secrets.DB_HOST || 'localhost' }}"
-              echo "DB_NAME=${{ secrets.DB_NAME }}"
-              echo "DB_USER=${{ secrets.DB_USER }}"
-              echo "DB_PASS=${{ secrets.DB_PASS }}"
-              echo "DB_PORT=${{ secrets.DB_PORT || '3306' }}"
-            fi
-            if [ -n "${{ secrets.TELEGRAM_BOT_TOKEN }}" ]; then
-              echo "TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}"
-            fi
-            if [ -n "${{ secrets.TELEGRAM_CHAT_ID }}" ]; then
-              echo "TELEGRAM_CHAT_ID=${{ secrets.TELEGRAM_CHAT_ID }}"
-            fi
-            if [ -n "${{ secrets.FIREBASE_PROJECT_ID }}" ]; then
-              echo "FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }}"
-            fi
-            if [ -n "${{ secrets.FIREBASE_CLIENT_EMAIL }}" ]; then
-              echo "FIREBASE_CLIENT_EMAIL=${{ secrets.FIREBASE_CLIENT_EMAIL }}"
-            fi
-            if [ -n "${{ secrets.FIREBASE_DATABASE_URL }}" ]; then
-              echo "FIREBASE_DATABASE_URL=${{ secrets.FIREBASE_DATABASE_URL }}"
-            fi
-          } > dist/.env
-
-      # ----------------------------------------------------
-      # Phase 3: Setup SSH Credentials
+      # Phase 2: Setup SSH Credentials
       # ----------------------------------------------------
       - name: Add SSH Key & Known Hosts
         run: |
@@ -79,7 +47,7 @@ jobs:
           ssh-keyscan -p "${SSH_PORT}" -H "${SSH_HOST}" >> ~/.ssh/known_hosts 2>/dev/null || true
 
       # ----------------------------------------------------
-      # Phase 4: Create Pre-Deployment Snapshot Backup
+      # Phase 3: Create Pre-Deployment Snapshot Backup
       # ----------------------------------------------------
       - name: Snapshot current working version on ServerByte
         run: |
@@ -94,7 +62,8 @@ jobs:
             "
 
       # ----------------------------------------------------
-      # Phase 5: Deploy Build Output to ServerByte
+      # Phase 4: Deploy Build Output to ServerByte
+      # (Preserves server-side .env file so credentials stay safely on the host)
       # ----------------------------------------------------
       - name: Sync dist/ to ServerByte docroot
         run: |
@@ -102,6 +71,7 @@ jobs:
             "${SSH_USER}@${SSH_HOST}" "mkdir -p ~/${TARGET_PATH}"
 
           rsync -az --delete \
+            --exclude='.env' \
             -e "ssh -4 -i ~/.ssh/deploy_key -p ${SSH_PORT} -o StrictHostKeyChecking=no" \
             dist/ "${SSH_USER}@${SSH_HOST}:~/${TARGET_PATH}/"
 
