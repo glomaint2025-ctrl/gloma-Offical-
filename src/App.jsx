@@ -10,6 +10,10 @@ import Services from './pages/Services.jsx';
 import Works from './pages/Works.jsx';
 import Reviews from './pages/Reviews.jsx';
 import Contact from './pages/Contact.jsx';
+import GlomaMind from './pages/GlomaMind.jsx';
+import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
+import Terms from './pages/Terms.jsx';
+import DataDeletion from './pages/DataDeletion.jsx';
 import AdminLayout from './admin/AdminLayout.jsx';
 import Leads from './admin/pages/Leads.jsx';
 import WorksAdmin from './admin/pages/WorksAdmin.jsx';
@@ -62,6 +66,10 @@ function PublicLayout() {
           <Route path="/works" element={<Works />} />
           <Route path="/reviews" element={<Reviews />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/glomamind" element={<GlomaMind />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/data-deletion" element={<DataDeletion />} />
         </Routes>
         <Footer />
         <a
